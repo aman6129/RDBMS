@@ -19,6 +19,18 @@ void Database::create(string table_name, vector<string> attributes, vector<strin
 
 }
 
+void Database::remove(string relation_name, int row_index){
+	int relation_index;
+	if((relation_index = get_relation_index(relation_name)) == -1)
+		throw runtime_error("remove: no such relation");
+
+	vector<vector<string> >& relation_table = RELATION_LIST[relation_index];
+
+	if(unsigned(row_index) >= relation_table.size())
+		throw runtime_error("remove: no such row index (" + to_string(row_index) + ")");
+
+	relation_table.erase(relation_table.begin() + row_index);
+}
 
 int Database::get_relation_index(string table_name)
 {
