@@ -1,267 +1,518 @@
 #include "Database.h"
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
 #include <string>
 
-void Database::select(string view_name, string in_table_name, int row_index)
+// Database Functions
+void Database::create(string relationName, vector<string> attributes, vector<string> attributeTypes, vector<string> keys) // GOOD TO GO
 {
-	bool = true;
-	// check to see if view_name already exists
-	for(unsigned int i=0; i<VIEW_LIST.size(); i++)
-		if(VIEW_LIST[i][0][0] == view_name)-{
-			VIEW_CHECK = false;
-		}
-	
-	bool IN_VIEW = false;
-	bool IN_RELATION = false;
-	for(unsigned int i=0; i<VIEW_LIST.size(); i++)
-		if(VIEW_LIST[i][0][0] == in_table_name){
-			IN_VIEW = true;
-		}
-	for(unsigned int i=0; i<RELATION_LIST.size(); i++)
-		if(RELATION_LIST[i][0][0] == in_table_name){
-			IN_RELATION = true;
-		}
+	Table* relationTable;
+	vector<string> titleRow;
 
-	vector<vector<string> > TEMP_VIEW_TABLE;
-	if(IN_RELATION){
-		if(VIEW_CHECK){
-			int RELATION_INDEX = get_relation_index(in_table_name);
-			vector<string> temp_vec;
-			temp_vec.push_back(view_name);
-			for(unsigned int i=1; i<RELATION_LIST[RELATION_INDEX][0].size(); i++)
-				temp_vec.push_back(RELATION_LIST[RELATION_INDEX][0][i]);
-			TEMP_VIEW_TABLE.push_back(temp_vec);
-			TEMP_VIEW_TABLE.push_back(RELATION_LIST[RELATION_INDEX][1]);
-			TEMP_VIEW_TABLE.push_back(RELATION_LIST[RELATION_INDEX][2]);
-			TEMP_VIEW_TABLE.push_back(RELATION_LIST[RELATION_INDEX][row_index]);
+	titleRow.push_back(relationName);
 
-			VIEW_LIST.push_back(TEMP_VIEW_TABLE);
-		}
-		else{
-			int VIEW_INDEX = get_view_index(view_name);
-			int RELATION_INDEX = get_relation_index(in_table_name);
-			VIEW_LIST[VIEW_INDEX].push_back(RELATION_LIST[RELATION_INDEX][row_index]);
-		}
-	}
-	else{
-		if(VIEW_CHECK){
-			int VIEW_INDEX = get_view_index(in_table_name);
-			vector<string> temp_vec;
-			temp_vec.push_back(view_name);
-			for(unsigned int i=1; i<VIEW_LIST[VIEW_INDEX][0].size(); i++)
-				temp_vec.push_back(VIEW_LIST[VIEW_INDEX][0][i]);
-
-			TEMP_VIEW_TABLE.push_back(temp_vec);
-			TEMP_VIEW_TABLE.push_back(VIEW_LIST[VIEW_INDEX][1]);
-			TEMP_VIEW_TABLE.push_back(VIEW_LIST[VIEW_INDEX][2]);
-			TEMP_VIEW_TABLE.push_back(VIEW_LIST[VIEW_INDEX][row_index]);
-
-			VIEW_LIST.push_back(TEMP_VIEW_TABLE);
-		}
-		else{
-			int VIEW_INDEX = get_view_index(view_name);
-			int V_INDEX = get_view_index(in_table_name);
-			VIEW_LIST[VIEW_INDEX].push_back(VIEW_LIST[V_INDEX][row_index]);
-		}
-	}
+	relationTable->addRow(titleRow);
+	relationTable->addRow(attributes);
+	relationTable->setAttributeTypes(attributeTypes);
+	relationTable->setKeys(keys);
 }
-void Database::project(string view_name, string in_table_name, vector<string> attributes)
+
+void Database::update(string relationName, int rowIndex, vector<string> attributes, vector<string> data) // GOOD TO GO
 {
-	if(view_name == in_table_name)
-		throw runtime_error("Error: both names equal");
-	int INDEX = get_relation_index(in_table_name);
-	vector<vector<string> > TEMP_VIEW_TABLE;
-	vector<int> columns;
+	int relationIndex = getTableIndex(relationName);
+	vector<int> attributeIndices;
 
-	if(INDEX == -1){
-		INDEX = get_view_index(in_table_name);
-		if(INDEX == -1)
-			throw runtime_error("Error: view does not exists");
-		else{
-			bool ATTRIBUTE_CHECK = false;
-			for(unsigned int i = 0; i<attributes.size(); i++){
-				for(unsigned int j=0; j<VIEW_LIST[INDEX][1].size(); j++)
-					if(attributes[i] == VIEW_LIST[INDEX][1][j]){
-						columns.push_back(i);
-						ATTRIBUTE_CHECK = true;
-					}
-				if(ATTRIBUTE_CHECK == false) 
-					throw runtime_error("Project: no such attribute exists (" + attributes[i] + ")");
-			}
-			vector<string> t_vec;
-			t_vec.push_back(view_name);
-			TEMP_VIEW_TABLE.push_back(t_vec);
-
-			for(unsigned int i=1; i< VIEW_LIST[INDEX].size(); i++){
-				vector<string> temp_vec;
-				for(unsigned int j=0; j<columns.size(); j++)
-					temp_vec.push_back(VIEW_LIST[INDEX][i][columns[j]]);
-				TEMP_VIEW_TABLE.push_back(temp_vec);
-			}
-			VIEW_LIST.push_back(TEMP_VIEW_TABLE);
-		}
-	}
-	else{
-		bool ATTRIBUTE_CHECK = false;
-		for(unsigned int i = 0; i<attributes.size(); i++){
-			for(unsigned int j=0; j<RELATION_LIST[INDEX][1].size(); j++)
-				if(attributes[i] == RELATION_LIST[INDEX][1][j]){
-					columns.push_back(i);
-					ATTRIBUTE_CHECK = true;
-				}
-			if(ATTRIBUTE_CHECK == false)
-				throw runtime_error("Project: no such attribute exists (" + attributes[i] + ")");
-		}
-		vector<string> t_vec;
-		t_vec.push_back(view_name);
-		TEMP_VIEW_TABLE.push_back(t_vec);
-
-		for(unsigned int i=1; i< RELATION_LIST[INDEX].size(); i++){
-			vector<string> temp_vec;
-			for(unsigned int j=0; j<columns.size(); j++)
-				temp_vec.push_back(RELATION_LIST[INDEX][i][columns[j]]);
-			TEMP_VIEW_TABLE.push_back(temp_vec);
-		}
-		VIEW_LIST.push_back(TEMP_VIEW_TABLE);
-	}
-}
-
-
-void Database::rename(string new_view, string existing_table, vector<string> attributes){
-	vector<string> key_attribute_indices;
-	const vector<vector<string>> & old_table = get_table(existing_table);
-
-	if(old_table[1].size() != attributes.size())
-		throw runtime_error("rename: incorrect number of attributes");
-
-	VIEW_LIST.push_back(vector<vector<string>>(2));
-	vector<vector<string>> & view = VIEW_LIST[VIEW_LIST.size() - 1];
-
-	// set title
-	view[0].push_back(new_view);
-
-	// set attributes
-	view[1] = attributes;
-
-	// copy data
-	for(unsigned int i = 2; i < old_table.size(); ++i)
-		view.push_back(old_table[i]);
-
-	// set new key names to reflect new attributes
-	for(unsigned int i = 1; i < old_table[0].size(); ++i) {
-		for(unsigned int j = 0; j < old_table[1].size(); ++j)
-			if(old_table[0][i] == old_table[1][j])
-				view[0].push_back(attributes[j]);
-	}
-}
-
-void Database::set_union(string view_name, string table1_name, string table2_name)
-{
-	
-}
-
-void Database::set_difference(string view_name, string table1_name, string table2_name)
-{
-	
-}
-
-void Database::cross_product(string view_name, string table1_name, string table2_name)
-{
-	
-}
-
-void Database::natural_join(string view_name, string table1_name, string table2_name)
-{
-		
-}
-
-void Database::create(string table_name, vector<string> attributes, vector<string> attribute_types, vector<string> keys)
-{
-	// push back empty table to relation list and get reference to table
-	RELATION_LIST.push_back(vector<vector<string> >());
-	vector<vector<string> > & relation_table = RELATION_LIST[RELATION_LIST.size() - 1];
-
-	// push back empty row and intialize with title and keys
-	relation_table.push_back(vector<string>());
-	relation_table[0].push_back(table_name);
-	relation_table[0].insert(relation_table[0].end(), keys.begin(), keys.end());
-
-	// add attribute names and attribute types
-	relation_table.push_back(attributes);
-	relation_table.push_back(attribute_types);
-
-}
-
-void update(string relation_name, vector<string> attribute, vector<string> data, int row_index)
-{
-	
-}
-
-void insert_tuple(string relation_name, vector<string> tuple)
-{
-	
-}
-
-void insert_view(string relation_name, string view_name)
-{
-	
-}
-
-void delete_tuple(string relation_name, string view_name)
-{
-	
-}
-
-void Database::remove(string relation_name, int row_index){
-	int relation_index;
-	if((relation_index = get_relation_index(relation_name)) == -1)
-		throw runtime_error("remove: no such relation");
-
-	vector<vector<string> >& relation_table = RELATION_LIST[relation_index];
-
-	if(unsigned(row_index) >= relation_table.size())
-		throw runtime_error("remove: no such row index ( to_string(row_index) )");
-
-	relation_table.erase(relation_table.begin() + row_index);
-}
-
-
-int Database::get_relation_index(string table_name)
-{
-	int INDEX = -1;
-
-	for (unsigned int i = 0; i<RELATION_LIST.size(); i++)
-	if (RELATION_LIST[i][0][0] == table_name)
-		INDEX = i;
-	return INDEX;
-}
-
-int Database::get_view_index(string table_name)
-{
-	int INDEX = -1;
-
-	for (unsigned int i = 0; i<VIEW_LIST.size(); i++)
-	if (VIEW_LIST[i][0][0] == table_name)
-		INDEX = i;
-	return INDEX;
-}
-
-int Database::get_attribute_index(TableType type, int table_index, string attribute_name)
-{
-	int COLUMN_INDEX = -1;
-	if (type == RELATION)
+	for (int i = 0; i < attributes.size(); i++)
 	{
-		for (unsigned int i = 0; i<RELATION_LIST[table_index][1].size(); i++)
-		if (attribute_name == RELATION_LIST[table_index][1][i])
-			COLUMN_INDEX = i;
+		int attributeIndex = getAttributeIndex(RELATION, relationIndex, attributes[i]);
+		attributeIndices.push_back(attributeIndex);
+	}
+	if (attributeIndices.size() == data.size())
+	{
+		for (int i = 0; i < attributeIndices.size(); i++)
+		{
+			_relations[relationIndex]->setCell(rowIndex, attributeIndices[i], data[i]);
+		}
 	}
 	else
 	{
-		for (unsigned int i = 0; i<VIEW_LIST[table_index][1].size(); i++)
-		if (attribute_name == VIEW_LIST[table_index][1][i])
-			COLUMN_INDEX = i;
+		throw runtime_error("update: mismatch between attributes and data lengths");
 	}
-	return COLUMN_INDEX;
 }
 
+void Database::insertTuple(string relationName, vector<string> tuple) // GOOD TO GO
+{
+	int relationIndex = getTableIndex(relationName);
+	Table* relationTable = _relations[relationIndex];
 
+	if (tuple.size() == relationTable->getRow(1).size())
+	{
+		relationTable->addRow(tuple);
+	}
+	else
+	{
+		throw runtime_error("insertTuple: tuple size doesn't match number of attributes");
+	}
+}
 
+void Database::insertView(string relationName, string viewName) // GOOD TO GO
+{
+	int relationIndex = getTableIndex(relationName);
+	int viewIndex = getTableIndex(viewName);
+	Table* relationTable = _relations[relationIndex];
+	Table* viewTable = _views[viewIndex];
+
+	if (_views[viewIndex]->getRow(1).size() == _relations[relationIndex]->getRow(1).size())
+	{
+		for (int i = 0; i < _views[viewIndex]->getNumRows(); i++)
+		{
+			relationTable->addRow(_views[viewIndex]->getRow(i));
+		}
+	}
+	else
+	{
+		throw runtime_error("insertView: view row size doesn't match relation row size");
+	}
+}
+
+void Database::removeRow(string relationName, int rowIndex) // GOOD TO GO
+{
+	int relationIndex = getTableIndex(relationName);
+	Table* relationTable = _relations[relationIndex];
+
+	if (rowIndex >= 0 && rowIndex < relationTable->getNumRows())
+	{
+		relationTable->removeRow(rowIndex);
+	}
+	else
+	{
+		throw runtime_error("removeRow: no such row index");
+	}
+}
+
+// Relational Algebra Functions
+void Database::selection(string viewName, string tableName, int rowIndex) // GOOD TO GO
+{
+	bool viewNameDupe = true;
+	for (int i = 0; i < _views.size(); i++)
+	{
+		if (_views.at(i)->getCell(0, 0) == viewName)
+		{
+			viewNameDupe = false;
+		}
+	}
+
+	bool isInView = false;
+	bool isInRelation = false;
+	for (int i = 0; i < _views.size(); i++)
+	{
+		if (_views.at(i)->getCell(0, 0) == tableName)
+		{
+			isInView = true;
+		}
+	}
+	for (int i = 0; i < _relations.size(); i++)
+	{
+		if (_relations.at(i)->getCell(0, 0) == tableName)
+		{
+			isInRelation = true;
+		}
+	}
+
+	Table* viewTemp;
+	if (isInRelation)
+	{
+		if (viewNameDupe)
+		{
+			int relationIndex = getTableIndex(tableName);
+			vector<string> tempVec;
+			tempVec.push_back(viewName);
+
+			for (int i = 1; i < _relations.at(relationIndex)->getRow(0).size(); i++)
+			{
+				tempVec.push_back(_relations.at(relationIndex)->getCell(0, i));
+			}
+
+			viewTemp->addRow(tempVec);
+			viewTemp->addRow(_relations.at(relationIndex)->getRow(1));
+			viewTemp->addRow(_relations.at(relationIndex)->getRow(2));
+			viewTemp->addRow(_relations.at(relationIndex)->getRow(rowIndex));
+			_views.push_back(viewTemp);
+		}
+		else
+		{
+			int viewIndex = getTableIndex(viewName);
+			int relationIndex = getTableIndex(tableName);
+			_views.at(viewIndex)->addRow(_relations.at(relationIndex)->getRow(rowIndex));
+		}
+	}
+	else
+	{
+		if (viewNameDupe)
+		{
+			int viewIndex = getTableIndex(tableName);
+			vector<string> tempVec;
+			tempVec.push_back(viewName);
+
+			for (int i = 1; i < _views.at(viewIndex)->getRow(0).size(); i++)
+			{
+				tempVec.push_back(_views.at(viewIndex)->getCell(0, i));
+			}
+
+			viewTemp->addRow(tempVec);
+			viewTemp->addRow(_views.at(viewIndex)->getRow(1));
+			viewTemp->addRow(_views.at(viewIndex)->getRow(2));
+			viewTemp->addRow(_views.at(viewIndex)->getRow(rowIndex));
+			_views.push_back(viewTemp);
+		}
+		else
+		{
+			int viewIndex = getTableIndex(viewName);
+			int vIndex = getTableIndex(tableName);
+			_views.at(viewIndex)->addRow(_views.at(vIndex)->getRow(rowIndex));
+		}
+	}
+}
+
+void Database::projection(string viewName, string tableName, vector<string> attributes) // GOOD TO GO
+{
+	int relationIndex = getTableIndex(tableName);
+	Table* viewTemp;
+	vector<int> columns;
+
+	if (relationIndex == -1)
+	{
+		relationIndex = getTableIndex(tableName);
+		bool checkAttr = false;
+
+		for (int i = 0; i < attributes.size(); i++)
+		{
+			for (int j = 0; j < _views.at(relationIndex)->getRow(1).size(); j++)
+			{
+				if (attributes[i] == _views.at(relationIndex)->getCell(1, j))
+				{
+					columns.push_back(i);
+					checkAttr = true;
+				}
+			}
+		}
+
+		vector<string> tVec;
+		tVec.push_back(viewName);
+		viewTemp->addRow(tVec);
+
+		for (int i = 1; i < _views.at(relationIndex)->getNumRows(); i++)
+		{
+			vector<string> tempVec;
+
+			for (int j = 0; j < columns.size(); j++)
+			{
+				tempVec.push_back(_views.at(relationIndex)->getCell(i, columns[j]));
+			}
+
+			viewTemp->addRow(tempVec);
+		}
+
+		_views.push_back(viewTemp);
+	}
+	else
+	{
+		bool checkAttr = false;
+
+		for (int i = 0; i < attributes.size(); i++)
+		{
+			for (int j = 0; j < _relations.at(relationIndex)->getRow(1).size(); j++)
+			{
+				if (attributes[i] == _relations.at(relationIndex)->getCell(1, j))
+				{
+					columns.push_back(i);
+					checkAttr = true;
+				}
+			}
+		}
+
+		vector<string> tVec;
+		tVec.push_back(viewName);
+		viewTemp->addRow(tVec);
+
+		for (int i = 1; i < _relations.at(relationIndex)->getNumRows(); i++)
+		{
+			vector<string> tempVec;
+
+			for (int j = 0; j < columns.size(); j++)
+			{
+				tempVec.push_back(_relations.at(relationIndex)->getCell(i, columns[j]));
+			}
+
+			viewTemp->addRow(tempVec);
+		}
+
+		_views.push_back(viewTemp);
+	}
+}
+
+void Database::rename(string newView, string existingTable, vector<string> attributes) // GOOD TO GO
+{
+	Table* oldTable = getTable(existingTable);
+	Table* view;
+	vector<string> titleRow;
+
+	titleRow.push_back(newView);
+	view->addRow(titleRow);
+	view->addRow(attributes);
+
+	for (int i = 2; i < oldTable->getNumRows(); i++)
+	{
+		view->addRow(oldTable->getRow(i));
+	}
+	for (int i = 1; i < oldTable->getRow(0).size(); i++)
+	{
+		for (int j = 0; j < oldTable->getRow(1).size(); j++)
+		{
+			if (oldTable->getCell(0, i) == oldTable->getCell(1, j))
+			{
+				view->getRow(0).push_back(attributes[j]);
+			}
+		}
+	}
+}
+
+void Database::setUnion(string viewName, string table1, string table2Name)
+{
+	int table1Id = getRelationIndex(table1);
+	int table2NameId = getRelationIndex(table2Name);
+
+	viewSet.push_back(vector<vector<string> >());
+	vector<vector<string> > & view_table = viewSet[viewSet.size() - 1];
+	view_table.push_back(vector<string>());
+	view_table[0].push_back(viewName);
+	for (int i = 0; i < relationSet[table1Id].size(); i++)
+	{
+		view_table.push_back(relationSet[table1Id][i]);
+	}
+	for (int index2 = 2; index2 < relationSet[table2NameId].size(); index2++)
+	{
+		bool rowExists = false;
+		for (int indexView = 0; indexView < viewSet[viewSet.size() - 1].size(); indexView++)
+		{
+			if (compareRows(relationSet[table2NameId][index2], viewSet[viewSet.size() - 1][indexView]))
+			{
+				rowExists = true;
+			}
+		}
+		if (!rowExists)
+		{
+			view_table.push_back(relationSet[table2NameId][index2]);
+		}
+	}
+}
+
+void Database::setDifference(string viewName, string table1, string table2Name)
+{
+	int table1Id = getRelationIndex(table1);
+	int table2NameId = getRelationIndex(table2Name);
+
+	viewSet.push_back(vector<vector<string> >());
+	vector<vector<string> > & view_table = viewSet[viewSet.size() - 1];
+	view_table.push_back(vector<string>());
+	view_table[0].push_back(viewName);
+
+	for (int i = 0; i < relationSet[table1Id].size(); i++)
+	{
+		view_table.push_back(relationSet[table1Id][i]);
+	}
+	for (int index2 = 2; index2 < relationSet[table2NameId].size(); index2++)
+	{
+		for (int indexView = viewSet[viewSet.size() - 1].size() - 1; indexView >= 0; indexView--)
+		{
+			if (compareRows(relationSet[table2NameId][index2], viewSet[viewSet.size() - 1][indexView]))
+			{
+				viewSet[viewSet.size() - 1].erase(viewSet[viewSet.size() - 1].begin() + indexView);
+			}
+		}
+	}
+}
+
+void Database::crossProduct(string viewName, string table1, string table2Name)
+{
+	int table1Id = getRelationIndex(table1);
+	int table2NameId = getRelationIndex(table2Name);
+
+	viewSet.push_back(vector<vector<string> >());
+	vector<vector<string> > & view_table = viewSet[viewSet.size() - 1];
+	view_table.push_back(vector<string>());
+	view_table[0].push_back(viewName);
+	for (int i = 0; i < 3; i++)
+	{
+		view_table.push_back(relationSet[table1Id][i]);
+	}
+	for (int i = 3; i < relationSet[table1Id].size(); i++)
+	{
+		for (int j = 3; j < relationSet[table2NameId].size(); j++)
+		{
+			view_table.push_back(appendVectors(relationSet[table1Id][i], relationSet[table2NameId][j]));
+		}
+	}
+}
+
+void Database::naturalJoin(string viewName, string table1, string table2Name, string condition)
+{
+	int table1Id = getRelationIndex(table1);
+	int table2NameId = getRelationIndex(table2Name);
+	int column1 = 0;
+	int column2 = 0;
+
+	for (int i = 0; i < relationSet[table1Id][1].size(); i++)
+	{
+		if (condition == relationSet[table1Id][1][i])
+		{
+			column1 = i;
+		}
+	}
+	for (int i = 0; i < relationSet[table2NameId][1].size(); i++)
+	{
+		if (condition == relationSet[table2NameId][1][i])
+		{
+			column2 = i;
+		}
+	}
+
+	viewSet.push_back(vector<vector<string> >());
+	vector<vector<string> > & view_table = viewSet[viewSet.size() - 1];
+	view_table.push_back(vector<string>());
+	view_table[0].push_back(viewName);
+	for (int i = 0; i < 3; i++)
+	{
+		view_table.push_back(relationSet[table1Id][i]);
+	}
+	for (int i = 3; i < relationSet[table1Id].size(); i++)
+	{
+		for (int j = 3; j < relationSet[table2NameId].size(); j++)
+		{
+			if (relationSet[table1Id][i][column1] == relationSet[table2NameId][j][column2])
+			{
+				if (relationSet[table1Id][i] != relationSet[table2NameId][j])
+				{
+					view_table.push_back(appendVectors(relationSet[table1Id][i], relationSet[table2NameId][j]));
+				}
+			}
+		}
+	}
+}
+
+// Accessor Functions
+Table* Database::getTable(string tableName) // GOOD TO GO
+{
+	int index = getTableIndex(tableName);
+	Table* table;
+
+	switch (getTableType(tableName))
+	{
+	case RELATION:
+		table = _relations[index];
+		break;
+	case VIEW:
+		table = _views[index];
+		break;
+	default:
+		throw runtime_error("getTable: no such table exists");
+		break;
+	}
+
+	return table;
+}
+
+int Database::getTableIndex(string tableName) // GOOD TO GO
+{
+	int index = -1;
+
+	for (int i = 0; i < _relations.size(); i++)
+	{
+		if (_relations[i]->getCell(0, 0) == tableName)
+		{
+			index = i;
+		}
+	}
+	for (int i = 0; i < _views.size(); i++)
+	{
+		if (_views[i]->getCell(0, 0) == tableName)
+		{
+			index = i;
+		}
+	}
+	if (index == -1)
+	{
+		throw runtime_error("getTableIndex: no such table exists");
+	}
+
+	return index;
+}
+
+Database::TableType Database::getTableType(string tableName) // GOOD TO GO
+{
+	for (int i = 0; i < _relations.size(); i++)
+	{
+		if (_relations[i]->getCell(0, 0) == tableName)
+		{
+			return RELATION;
+		}
+	}
+	for (int i = 0; i < _views.size(); i++)
+	{
+		if (_views[i]->getCell(0, 0) == tableName)
+		{
+			return VIEW;
+		}
+	}
+	throw runtime_error("getTableType: no such table exists");
+}
+
+int Database::getAttributeIndex(TableType type, int tableIndex, string attributeName) // GOOD TO GO
+{
+	int columnIndex = -1;
+
+	switch (type)
+	{
+	case RELATION:
+		for (int i = 0; i < _relations[tableIndex]->getRow(1).size(); i++)
+		{
+			if (attributeName == _relations[tableIndex]->getCell(1, i))
+			{
+				columnIndex = i;
+			}
+		}
+		break;
+	case VIEW:
+		for (int i = 0; i < _views[tableIndex]->getRow(1).size(); i++)
+		{
+			if (attributeName == _views[tableIndex]->getCell(1, i))
+			{
+				columnIndex = i;
+			}
+		}
+	default:
+		throw runtime_error("getAttributeIndex: table has no type or doesn't exist");
+	}
+	
+	return columnIndex;
+}
+
+// Print Function
+void Database::printTable(string tableName) // GOOD TO GO
+{
+	int index = getTableIndex(tableName);
+
+	switch (getTableType(tableName))
+	{
+	case RELATION:
+		_relations[index]->printTable();
+		break;
+	case VIEW:
+		_views[index]->printTable();
+		break;
+	default:
+		throw runtime_error("printTable: no such table exists");
+		break;
+	}
+}
