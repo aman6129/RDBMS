@@ -2,7 +2,15 @@
 
 void GameDBapp::wait_for_input()
 {
-
+	string input;
+	while(cin >> input)
+	{
+		if(input.compare("Exit") == 0 || input.compare("10") == 0)
+		{
+			cout << "Exiting the application\n";
+			break;
+		}
+	}
 }
 
 void GameDBapp::show_main_basic()
@@ -20,7 +28,9 @@ void GameDBapp::show_main_basic()
 		 << "7. Open\n"
 		 << "8. Save and Close\n"
 		 << "9. Show advanced menu\n"
-		 << "10. Exit\n";
+		 << "10. Exit\n\n";
+
+	wait_for_input();
 
 	
 }
